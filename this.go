@@ -27,16 +27,7 @@ var (
 	successChar        = "\u2022"
 	successColor       = "\033[32m"
 	successVerboseChar = "\u2714"
-
-	verbose bool
 )
-
-func init() {
-	// verbose = testing.Verbose()
-
-	// For now, leave full verbose logging on
-	verbose = true
-}
 
 func cyan(msgs ...string) {
 	write(os.Stdout, debugColor, strings.Join(msgs, " "), "\033[0m")
@@ -106,6 +97,7 @@ func GomegaFailHandler(message string, callerSkip ...int) {
 // Should uses descriptive naming to run the tests
 func Should(description string, t *testing.T, do func()) {
 	startAt := time.Now()
+	verbose := testing.Verbose()
 
 	defer func() {
 		if r := recover(); r != nil {
