@@ -10,6 +10,9 @@ import (
 )
 
 var (
+	afterFuncs  = make(map[*testing.T]func())
+	beforeFuncs = make(map[*testing.T]func())
+
 	failPanicMessage = "Test Failure"
 	skipPanicMessage = "Skip this.Should Test"
 
@@ -94,6 +97,16 @@ func GomegaFailHandler(message string, callerSkip ...int) {
 	panic(failPanicMessage + strings.Join(messageLines, "\n"))
 }
 
+// After assigns a function to run after each test
+func After(t *testing.T, do func()) {
+	afterFuncs[t] = do
+}
+
+// Before assigns a function to run before each test
+func Before(t *testing.T, do func()) {
+	beforeFuncs[t] = do
+}
+
 // Should uses descriptive naming to run the tests
 func Should(description string, t *testing.T, do func()) {
 	startAt := time.Now()
@@ -143,6 +156,14 @@ func Should(description string, t *testing.T, do func()) {
 				redln(strings.Join(newpacked, "\n"))
 			}
 		}
+
+		// FIXME: what if after panics?
+		// Since we attempt to recover from a test failure and continue, we want to
+		// make sure we don't leave things in a bad state. So, we should perform
+		// any assigned after action
+		if after, ok := afterFuncs[t]; ok {
+			after()
+		}
 	}()
 
 	if verbose {
@@ -156,7 +177,17 @@ func Should(description string, t *testing.T, do func()) {
 		Skip()
 	}
 
+	// Make sure we do any before actions
+	if before, ok := beforeFuncs[t]; ok {
+		before()
+	}
+
 	do()
+
+	// Now do any after actions, assuming our test didn't explode
+	if after, ok := afterFuncs[t]; ok {
+		after()
+	}
 
 	if verbose {
 		greenln(fmt.Sprintf(" %s (%.3fs)", successVerboseChar, time.Now().Sub(startAt).Seconds()))
